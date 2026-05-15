@@ -33,6 +33,19 @@ input[type="number"] {
   width: 70px;
   text-align: center;
 }
+
+/* ✅ NOVÁ POLE */
+.form-group {
+  margin-top: 15px;
+}
+
+input[type="text"] {
+  width: 100%;
+  padding: 10px;
+  margin-top: 5px;
+}
+
+/* Výstupy */
 #celkem, #pocet {
   text-align: center;
   font-size: 22px;
@@ -40,19 +53,16 @@ input[type="number"] {
   font-weight: bold;
   color: #2a72d4;
 }
+
 button {
   width: 100%;
   padding: 15px;
-  margin-top: 30px;
+  margin-top: 20px;
   font-size: 24px;
   background: #ff6b35;
   color: white;
-  border: none;
   border-radius: 10px;
   cursor: pointer;
-}
-button:hover {
-  background: #e85a28;
 }
 </style>
 </head>
@@ -62,122 +72,119 @@ button:hover {
 <h1>SŠ Kostka – OBJEDNÁVKY BUFET</h1>
 
 <div class="container">
-  <div id="items"></div>
 
-  <div id="celkem">Celková cena: 0 Kč</div>
-  <div id="pocet">Počet kusů: 0</div>
+<!-- 🟡 POLOŽKY -->
+<div class="item">
+  <span>SENDVIČ (45 Kč)</span>
+  <input type="number" id="sandwich" value="0" min="0">
+</div>
 
-  <button onclick="odeslatObjednavku()">ODESLAT OBJEDNÁVKU</button>
+<div class="item">
+  <span>PÁREK V ROHLÍKU (35 Kč)</span>
+  <input type="number" id="parek" value="0" min="0">
+</div>
+
+<div class="item">
+  <span>JABLKO (15 Kč)</span>
+  <input type="number" id="apple" value="0" min="0">
+</div>
+
+<!-- 🟢 Součty -->
+<div id="celkem">Celková cena: 0 Kč</div>
+<div id="pocet">Počet kusů: 0</div>
+
+<!-- ================================= -->
+<!-- ✅ NOVÁ POVINNÁ POLE -->
+<!-- ================================= -->
+
+<div class="form-group">
+  <label><b>VAŠE JMÉNO</b></label>
+  <input type="text" id="jmeno" placeholder="Novák Jan">
+</div>
+
+<div class="form-group">
+  <label><b>TELEFON</b></label>
+  <input type="text" id="telefon" placeholder="+420 000 000 000">
+</div>
+
+<!-- 🔴 TLAČÍTKO -->
+<button onclick="odeslatObjednavku()">ODESLAT OBJEDNÁVKU</button>
+
 </div>
 
 <script>
 
-let items = [];
+// Cenový model
+const prices = {
+  sandwich: 45,
+  parek: 35,
+  apple: 15
+};
 
-// ✅ načítání CSV
-async function loadCSV() {
-  try {
-    const response = await fetch("data_bufet.csv?t=" + Date.now());
-    if (!response.ok) {
-      throw new Error("Soubor nebyl nalezen");
-    }
+// Přepočet
+document.querySelectorAll("input[type='number']").forEach(el => {
+  el.addEventListener("input", spocitej);
+});
 
-    const text = await response.text();
-    parseCSV(text);
-    renderItems();
+function spocitej() {
+  let s = +document.getElementById("sandwich").value;
+  let p = +document.getElementById("parek").value;
+  let a = +document.getElementById("apple").value;
 
-  } catch (err) {
-    console.error(err);
-    alert("Chyba načítání CSV.");
-  }
+  let cena = s*45 + p*35 + a*15;
+  let kusy = s + p + a;
+
+  document.getElementById("celkem").textContent = "Celková cena: " + cena + " Kč";
+  document.getElementById("pocet").textContent = "Počet kusů: " + kusy;
 }
 
-// ✅ parsování CSV (přeskočení hlavičky)
-function parseCSV(text) {
-  items = [];
 
-  const lines = text.split("\n");
+/* ============================================ */
+/* ✅ HLAVNÍ FUNKCE – MAILTO OBJEDNÁVKA */
+/* ============================================ */
+function odeslatObjednavku(){
 
-  // ⬇️ přeskočíme první řádek (hlavičku)
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
+  let jmeno = document.getElementById("jmeno").value.trim();
+  let telefon = document.getElementById("telefon").value.trim();
 
-    if (!line) continue;
-
-    const [nazev, cena] = line.split(";");
-
-    if (nazev && cena) {
-      items.push({
-        nazev: nazev.trim(),
-        cena: parseFloat(cena.replace(",", ".")),
-        mnozstvi: 0
-      });
-    }
-  }
-}
-
-// ✅ vykreslení
-function renderItems() {
-  const container = document.getElementById("items");
-  container.innerHTML = "";
-
-  items.forEach((item, index) => {
-
-    const div = document.createElement("div");
-    div.className = "item";
-
-    div.innerHTML = `
-      <span>${item.nazev} (${item.cena} Kč)</span>
-      <input type="number" min="0" value="0"
-        onchange="updateItem(${index}, this.value)">
-    `;
-
-    container.appendChild(div);
-  });
-}
-
-// ✅ změna množství
-function updateItem(index, value) {
-  items[index].mnozstvi = parseInt(value) || 0;
-  updateSummary();
-}
-
-// ✅ přepočet
-function updateSummary() {
-  let celkem = 0;
-  let pocet = 0;
-
-  items.forEach(item => {
-    celkem += item.cena * item.mnozstvi;
-    pocet += item.mnozstvi;
-  });
-
-  document.getElementById("celkem").innerText =
-    "Celková cena: " + celkem.toFixed(2) + " Kč";
-
-  document.getElementById("pocet").innerText =
-    "Počet kusů: " + pocet;
-}
-
-// ✅ odeslání
-function odeslatObjednavku() {
-  const objednavka = items
-    .filter(item => item.mnozstvi > 0)
-    .map(item => `${item.nazev}: ${item.mnozstvi} ks`);
-
-  if (objednavka.length === 0) {
-    alert("Nevybral jsi žádné položky!");
+  /* ✅ VALIDACE */
+  if(!jmeno || !telefon){
+    alert("Vyplňte jméno i telefon.");
     return;
   }
 
-  alert("Objednávka:\n\n" + objednavka.join("\n"));
-}
+  let s = +document.getElementById("sandwich").value;
+  let p = +document.getElementById("parek").value;
+  let a = +document.getElementById("apple").value;
 
-// start
-loadCSV();
+  let cena = s*45 + p*35 + a*15;
+  let kusy = s + p + a;
+
+  /* ✅ TEXT EMAILU */
+  let body =
+    "OBJEDNÁVKA BUFET\n\n" +
+    "Jméno: " + jmeno + "\n" +
+    "Telefon: " + telefon + "\n\n" +
+
+    "Položky:\n" +
+    "SENDVIČ: " + s + " ks (" + s*45 + " Kč)\n" +
+    "PÁREK: " + p + " ks (" + p*35 + " Kč)\n" +
+    "JABLKO: " + a + " ks (" + a*15 + " Kč)\n\n" +
+
+    "Počet kusů: " + kusy + "\n" +
+    "Celkem: " + cena + " Kč";
+
+  /* ✅ MAILTO IMPLEMENTACE */
+  let mailto =
+    "mailto:machalek.roman@kostka-skola.cz" +
+    "?subject=" + encodeURIComponent("Objednávka bufet") +
+    "&body=" + encodeURIComponent(body);
+
+  // 🔵 otevře email klienta
+  window.location.href = mailto;
+}
 
 </script>
 
 </body>
 </html>
-``
